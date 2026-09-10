@@ -321,6 +321,7 @@ import { SessionSurface } from "./surfaces/SessionSurface";
 import { ProjectTerminalDock } from "./surfaces/ProjectTerminalDock";
 import { SearchView } from "./surfaces/SearchView";
 import { SettingsView } from "./surfaces/SettingsView";
+import type { InboxSource } from "./lib/inboxFilters";
 import { InboxView } from "./surfaces/InboxView";
 import type { InboxSessionPortal } from "./surfaces/InboxDiscussionPanel";
 import { inboxAskKey, inboxAskPrompt } from "./lib/inboxAsk";
@@ -341,6 +342,8 @@ import {
   saveSettingsSection,
   subscribeLiveAgentsEnabled,
   subscribeNotesEnabled,
+  SETTINGS_ANCHORS,
+  type SettingsAnchorId,
   type SettingsSectionId,
   type FollowUpBehavior,
 } from "./lib/settings";
@@ -639,6 +642,9 @@ export default function App({
   const [whatsNewVersion, setWhatsNewVersion] = useState<string | null>(null);
   const [settingsSection, setSettingsSection] =
     useState<SettingsSectionId>(loadSettingsSection);
+  const [settingsAnchor, setSettingsAnchor] = useState<SettingsAnchorId | null>(
+    null,
+  );
   const [editorNavigation, setEditorNavigation] =
     useState<EditorNavigationTarget | null>(null);
   const editorNavigationToken = useRef(0);
@@ -4789,21 +4795,36 @@ export default function App({
     setNotesViewOpen(false);
   }, []);
 
-  const openSettings = useCallback((section?: SettingsSectionId) => {
-    setFilePickerOpen(false);
-    setSearchViewOpen(false);
-    setInboxViewOpen(false);
-    setNotesViewOpen(false);
-    if (section) {
-      setSettingsSection(section);
-      saveSettingsSection(section);
-    }
-    setSettingsOpen(true);
-  }, []);
+  const openSettings = useCallback(
+    (section?: SettingsSectionId, anchor?: SettingsAnchorId) => {
+      setFilePickerOpen(false);
+      setSearchViewOpen(false);
+      setInboxViewOpen(false);
+      setNotesViewOpen(false);
+      if (section) {
+        setSettingsSection(section);
+        saveSettingsSection(section);
+      }
+      setSettingsAnchor(anchor ?? null);
+      setSettingsOpen(true);
+    },
+    [],
+  );
 
   const onOpenSettings = useCallback(() => openSettings(), [openSettings]);
 
+  // Both live on the long General page, so the anchor does the real work.
+  const onOpenInboxIntegrations = useCallback(
+    (source: InboxSource) =>
+      openSettings(
+        "general",
+        source === "gitlab" ? SETTINGS_ANCHORS.gitlab : SETTINGS_ANCHORS.linear,
+      ),
+    [openSettings],
+  );
+
   const onCloseSettings = useCallback(() => {
+    setSettingsAnchor(null);
     setSettingsOpen(false);
   }, []);
 
@@ -5613,6 +5634,7 @@ export default function App({
             sessions={inboxRelatedSessions}
             onOpenSession={onOpenInboxSession}
             target={inboxTarget}
+            onOpenIntegrations={onOpenInboxIntegrations}
           />
         ) : null}
         {notesViewOpen ? (
@@ -5626,6 +5648,7 @@ export default function App({
         {settingsOpen ? (
           <SettingsView
             section={settingsSection}
+            anchor={settingsAnchor}
             cwd={sidebarCwd}
             sessions={sidebarHistory}
             besideRail

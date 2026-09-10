@@ -56,6 +56,49 @@ export const DEFAULT_INBOX_FILTERS: InboxFilters = {
 
 export type InboxSource = InboxProvider;
 
+/**
+ * Connect state per gated source. `null` means the status check has not
+ * resolved yet, which keeps the tab visible rather than flashing it away.
+ */
+export type InboxSourceConnections = {
+  linear: boolean | null;
+  gitlab: boolean | null;
+};
+
+export const INBOX_SOURCE_LABELS: Record<InboxSource, string> = {
+  github: "GitHub",
+  linear: "Linear",
+  gitlab: "GitLab",
+};
+
+/** GitHub needs no connect step, so it is always offered. */
+export function visibleInboxSources(
+  connections: InboxSourceConnections,
+): InboxSource[] {
+  const sources: InboxSource[] = ["github"];
+  if (connections.linear !== false) sources.push("linear");
+  if (connections.gitlab !== false) sources.push("gitlab");
+  return sources;
+}
+
+/** The gated sources a user could still connect, for the "+" menu. */
+export function connectableInboxSources(
+  connections: InboxSourceConnections,
+): InboxSource[] {
+  const sources: InboxSource[] = [];
+  if (connections.linear === false) sources.push("linear");
+  if (connections.gitlab === false) sources.push("gitlab");
+  return sources;
+}
+
+/** Falls back to GitHub when the selected source loses its tab. */
+export function resolveInboxSource(
+  source: InboxSource,
+  connections: InboxSourceConnections,
+): InboxSource {
+  return visibleInboxSources(connections).includes(source) ? source : "github";
+}
+
 const FILTERS_KEY = "monocode.inboxFilters";
 const SOURCE_KEY = "monocode.inboxSource";
 

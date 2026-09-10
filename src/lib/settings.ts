@@ -45,6 +45,18 @@ export const SETTINGS_SECTIONS: {
   },
 ];
 
+/**
+ * Anchors for cards a deep link needs to reach. The General page is long, so
+ * "Connect GitLab" has to land on the card rather than the top of the page.
+ */
+export const SETTINGS_ANCHORS = {
+  gitlab: "settings-gitlab",
+  linear: "settings-linear",
+} as const;
+
+export type SettingsAnchorId =
+  (typeof SETTINGS_ANCHORS)[keyof typeof SETTINGS_ANCHORS];
+
 export const SETTINGS_SECTION_DEFAULT: SettingsSectionId = "general";
 
 export function isSettingsSectionId(

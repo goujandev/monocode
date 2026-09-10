@@ -170,9 +170,11 @@ import {
   saveLiveAgentsEnabled,
   saveNotesEnabled,
   settingsSectionDescription,
+  SETTINGS_ANCHORS,
   settingsSectionLabel,
   type DiffViewer,
   type FollowUpBehavior,
+  type SettingsAnchorId,
   type SettingsSectionId,
 } from "../lib/settings";
 import { loadSoundsEnabled, playCue, saveSoundsEnabled } from "../lib/sounds";
@@ -196,6 +198,8 @@ import { SkillsPage } from "./SkillsPage";
 
 type Props = {
   section: SettingsSectionId;
+  /** Element id to scroll into view once the section renders. */
+  anchor?: SettingsAnchorId | null;
   cwd: string;
   sessions: SessionSummary[];
   besideRail?: boolean;
@@ -210,6 +214,7 @@ type Props = {
 
 export function SettingsView({
   section,
+  anchor = null,
   cwd,
   sessions,
   besideRail = false,
@@ -222,6 +227,10 @@ export function SettingsView({
   onOpenWhatsNew,
 }: Props) {
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
+  useEffect(() => {
+    if (!anchor) return;
+    document.getElementById(anchor)?.scrollIntoView({ block: "start" });
+  }, [anchor, section]);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const appearance = useAppearanceSettings();
@@ -539,10 +548,10 @@ function GeneralPage({
         />
       </Row>
 
-      <Heading title="GitLab" />
+      <Heading title="GitLab" id={SETTINGS_ANCHORS.gitlab} />
       <GitlabSettings />
 
-      <Heading title="Linear" />
+      <Heading title="Linear" id={SETTINGS_ANCHORS.linear} />
       <LinearSettings />
 
       <Heading title="About" />
@@ -1716,10 +1725,19 @@ function PageHeader({
   );
 }
 
-function Heading({ title, first = false }: { title: string; first?: boolean }) {
+function Heading({
+  title,
+  first = false,
+  id,
+}: {
+  title: string;
+  first?: boolean;
+  id?: string;
+}) {
   return (
     <h2
-      className={`pb-1 text-[15px] font-semibold text-content ${
+      id={id}
+      className={`scroll-mt-8 pb-1 text-[15px] font-semibold text-content ${
         first ? "" : "pt-8"
       }`}
     >
