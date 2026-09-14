@@ -337,6 +337,22 @@ describe("coordinated quit", () => {
     expect(invokedWith("quit_decision")).toEqual({ id: 4, confirmed: true });
   });
 
+  it("tells the coordinator when a required quit write fails", async () => {
+    const release = busyWorkspace();
+    vi.mocked(invoke).mockImplementation((command) =>
+      command === "workspace_set_snapshot"
+        ? Promise.reject(new Error("disk full"))
+        : Promise.resolve(undefined),
+    );
+    try {
+      await commitQuit(6);
+      expect(invokedWith("quit_ready")).toEqual({ id: 6, persisted: false });
+    } finally {
+      vi.mocked(invoke).mockResolvedValue(undefined);
+      release();
+    }
+  });
+
   // The whole point of the handshake: no window exits on its own.
   it("persists and reports ready without exiting the app", async () => {
     const release = busyWorkspace();

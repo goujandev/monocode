@@ -365,29 +365,37 @@ export async function persistQuitState(
 ): Promise<void> {
   const refs = inFlightRefs(sessions, tabs);
   const interrupted = new Set(refs.map((ref) => ref.sessionId));
+  // A quit ends the process, so a swallowed write is work that never comes
+  // back: let it reject and let the caller call the quit off. An unload is a
+  // reload, where best effort is enough and failing loudly helps nobody.
+  const write = <T,>(pending: Promise<T>): Promise<T | null> =>
+    mode === "quit" ? pending : pending.catch(() => null);
+
   await Promise.all(
     sessions.map(async (session) => {
       if (!shouldPersistSession(session)) return;
       const payload = interrupted.has(session.id)
         ? markTurnInterrupted(session)
         : session;
-      await upsertSession(payload).catch(() => null);
+      await write(upsertSession(payload));
     }),
   );
-  await saveWorkspaceSnapshot(
-    collectWorkspaceSnapshot(
-      tabs,
-      sessions,
-      activeTabId,
-      projectCwd,
-      memory,
-      projectTerminals,
+  await write(
+    saveWorkspaceSnapshot(
+      collectWorkspaceSnapshot(
+        tabs,
+        sessions,
+        activeTabId,
+        projectCwd,
+        memory,
+        projectTerminals,
+      ),
     ),
-  ).catch(() => undefined);
+  );
   // Vite/webview reload must not wipe a restored snapshot: those chats are idle
   // in this process until Continue runs.
   if (mode === "quit" || refs.length > 0) {
-    await replaceInFlightSessions(refs).catch(() => undefined);
+    await write(replaceInFlightSessions(refs));
   }
 }
 
