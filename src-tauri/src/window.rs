@@ -20,10 +20,14 @@ const QUIT_COMMIT: &str = "quit_commit";
 const QUIT_ABORTED: &str = "quit_aborted";
 
 /// A wedged webview must not strand the app. Missing the poll deadline is safe
-/// because silence counts as busy, so it can be short. Confirming has no
-/// timeout of its own: it is waiting on a person.
+/// because silence counts as busy, so it can be short.
 const POLL_TIMEOUT: Duration = Duration::from_secs(2);
 const COMMIT_TIMEOUT: Duration = Duration::from_secs(10);
+/// Confirming waits on a person, so this is a backstop rather than a deadline:
+/// a dialog that never arrives, or an answer that never gets back, would
+/// otherwise leave Quit dead for the life of the process. Expiring only abandons
+/// the run, so a later Quit starts a fresh one.
+const CONFIRM_TIMEOUT: Duration = Duration::from_secs(300);
 
 #[derive(Clone, Copy, PartialEq)]
 enum Stage {
@@ -414,7 +418,9 @@ fn start_confirm(app: &AppHandle, id: u32) {
         .is_err()
     {
         clear_run(id);
+        return;
     }
+    watch_stage(app, id, Stage::Confirming, CONFIRM_TIMEOUT);
 }
 
 fn start_commit(app: &AppHandle, id: u32) {
@@ -484,7 +490,7 @@ fn watch_stage(app: &AppHandle, id: u32, stage: Stage, wait: Duration) {
         match stage {
             Stage::Polling => start_confirm(&app, id),
             Stage::Committing => confirm_quit(app),
-            Stage::Confirming => {}
+            Stage::Confirming => clear_run(id),
         }
     });
 }
