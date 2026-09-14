@@ -286,11 +286,10 @@ pub fn request_quit(app: &AppHandle) {
         resurface_prompt(app);
         return;
     }
-    if app.emit(QUIT_POLL, id).is_err() {
-        clear_run(id);
-        confirm_quit(app.clone());
-        return;
-    }
+    // One webview tearing down fails the whole emit, and exiting on that would
+    // kill every other window's work without asking. Let the poll time out
+    // instead: silence counts as busy, so the user is still asked.
+    let _ = app.emit(QUIT_POLL, id);
     watch_stage(app, id, Stage::Polling, POLL_TIMEOUT);
 }
 
@@ -429,10 +428,13 @@ fn start_commit(app: &AppHandle, id: u32) {
     if !open_commit(&mut QUIT_RUN.lock().unwrap(), id, labels) {
         return;
     }
-    if empty || app.emit(QUIT_COMMIT, id).is_err() {
+    if empty {
         confirm_quit(app.clone());
         return;
     }
+    // Same here: the windows that did receive it still deserve their save, so
+    // the commit timeout is the backstop rather than exiting on the spot.
+    let _ = app.emit(QUIT_COMMIT, id);
     watch_stage(app, id, Stage::Committing, COMMIT_TIMEOUT);
 }
 
