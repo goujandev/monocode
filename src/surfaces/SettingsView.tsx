@@ -117,7 +117,7 @@ import {
   subscribeModels,
 } from "../lib/models";
 import { prettyCwd, projectKey, projectName } from "../lib/paths";
-import { IS_MAC } from "../lib/platform";
+import { IS_MAC, IS_WIN } from "../lib/platform";
 import {
   loadArchivedProjects,
   looksLikeProject,
@@ -161,6 +161,7 @@ import {
   filterKeybindings,
   KEYBINDINGS,
   loadClaudeHooks,
+  loadCloseToTray,
   loadComposerRunner,
   loadDiffViewer,
   loadFollowUpBehavior,
@@ -168,6 +169,7 @@ import {
   loadLiveAgentsEnabled,
   loadNotesEnabled,
   saveClaudeHooks,
+  saveCloseToTray,
   saveComposerRunner,
   saveDiffViewer,
   saveFollowUpBehavior,
@@ -357,6 +359,7 @@ function GeneralPage({
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>(cachedNotificationPermission);
   const [claudeHooks, setClaudeHooks] = useState(loadClaudeHooks);
+  const [closeToTray, setCloseToTray] = useState(loadCloseToTray);
 
   // The user may flip the switch in System Settings and come back: re-read
   // the OS state whenever the window regains focus while the toggle is on.
@@ -435,6 +438,11 @@ function GeneralPage({
   const onClaudeHooks = (next: boolean) => {
     saveClaudeHooks(next);
     setClaudeHooks(next);
+  };
+
+  const onCloseToTray = (next: boolean) => {
+    saveCloseToTray(next);
+    setCloseToTray(next);
   };
 
   return (
@@ -527,6 +535,18 @@ function GeneralPage({
           onChange={onLiveAgentsEnabled}
         />
       </Row>
+      {IS_WIN && (
+        <Row
+          label="Close to tray"
+          description="Closing a window hides it to the system tray instead of quitting, so running agents keep going. Reopen from the tray icon, and quit for real from its menu. Turn this off to have close end the window."
+        >
+          <Toggle
+            label="Close to tray"
+            on={closeToTray}
+            onChange={onCloseToTray}
+          />
+        </Row>
+      )}
       <Row
         label="Sounds"
         description="Short cues when a turn finishes, a new inbox item appears on the project rail, or an update is available. Switches and Copy on a finished turn also play."

@@ -347,6 +347,7 @@ import {
 import { linearIssueDetails, peekLinearIssueDetails } from "./lib/linear";
 import { gitlabWorkItemDetails, peekGitlabWorkItemDetails } from "./lib/gitlab";
 import {
+  loadCloseToTray,
   loadLiveAgentsEnabled,
   loadNotesEnabled,
   loadDiffViewer,
@@ -391,9 +392,9 @@ import type { InstalledUpdate } from "./lib/updateNotice";
 import {
   bindResumedSessions,
   closeBusyWindow,
+  closeCurrentWindow,
   hasInFlightSessions,
   hideCurrentWindow,
-  closeCurrentWindow,
   isAppQuitting,
   persistLiveTranscripts,
   persistQuitState,
@@ -1110,12 +1111,14 @@ export default function App({
         // Listening here makes close our job. Letting the default path run
         // calls JS `window.destroy`, which Tauri denies without a permission.
         event.preventDefault();
+        const toTray = loadCloseToTray();
         if (hasInFlightSessions(sessionsRef.current)) {
           flushHarnessEvents();
-          if (!IS_MAC) {
+          if (!toTray && !IS_MAC) {
             void closeBusyWindow();
             return;
           }
+          // Not `persistQuitState`: that marks the live turns interrupted.
           void persistLiveTranscripts(sessionsRef.current);
           void hideCurrentWindow();
           return;
@@ -1129,7 +1132,7 @@ export default function App({
           "unload",
           projectTerminalsRef.current,
         ).finally(() => {
-          void closeCurrentWindow();
+          void (toTray ? hideCurrentWindow() : closeCurrentWindow());
         });
       })
       .then((fn) => {

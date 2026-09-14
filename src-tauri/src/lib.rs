@@ -20,6 +20,8 @@ mod reminders;
 mod search;
 mod session_store;
 mod skills;
+#[cfg(target_os = "windows")]
+mod tray;
 mod window;
 mod window_transfer;
 #[cfg(windows)]
@@ -178,6 +180,8 @@ pub fn run() {
             reminders::init(app.handle());
             checkpoint::init(app.handle())?;
             menu::install(app.handle())?;
+            #[cfg(target_os = "windows")]
+            tray::install(app.handle())?;
             #[cfg(target_os = "macos")]
             {
                 macos::install_dock_menu(app.handle());
