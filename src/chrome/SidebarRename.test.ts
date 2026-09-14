@@ -7,7 +7,6 @@ import { formatReminderTime } from "../lib/sessionReminders";
 import { Sidebar } from "./Sidebar";
 
 // Keep native services out of these menu/input interaction tests.
-vi.mock("../hooks/useInboxUnseen", () => ({ useInboxUnseen: () => false }));
 vi.mock("../hooks/useProjectDiffStats", () => ({
   useProjectDiffStats: () => null,
 }));
@@ -226,6 +225,53 @@ describe("sidebar session rename", () => {
   });
 });
 
+describe("sidebar reorder affordances", () => {
+  it("keeps the default cursor on reorderable tabs and folders", () => {
+    props.sessions = [
+      props.sessions[0],
+      {
+        ...props.sessions[0],
+        id: "session-2",
+        title: formatSessionTitle("codex", "Second conversation"),
+      },
+    ];
+    localStorage.setItem(
+      "monocode.sessionFolders",
+      JSON.stringify({
+        "/workspace/project": [
+          {
+            id: "folder-1",
+            name: "Folder one",
+            sessionIds: ["session-1"],
+            collapsed: false,
+          },
+          {
+            id: "folder-2",
+            name: "Folder two",
+            sessionIds: ["session-2"],
+            collapsed: false,
+          },
+        ],
+      }),
+    );
+
+    act(() => render());
+
+    const tabs = container.querySelectorAll<HTMLElement>('[role="tab"]');
+    expect(tabs).toHaveLength(3);
+    for (const tab of tabs) {
+      expect(tab.className).not.toContain("cursor-grab");
+      expect(tab.parentElement?.className).not.toContain("cursor-grab");
+    }
+    for (const name of ["Folder one", "Folder two"]) {
+      expect(
+        container.querySelector<HTMLButtonElement>(`button[title="${name}"]`)!
+          .className,
+      ).not.toContain("cursor-grab");
+    }
+  });
+});
+
 describe("sidebar pinned sessions", () => {
   it("renders them as a collapsible folder-style group without a divider", () => {
     props.sessions = [
@@ -259,6 +305,71 @@ describe("sidebar pinned sessions", () => {
         localStorage.getItem("monocode.pinnedSessionsCollapsed") ?? "{}",
       ),
     ).toEqual({ "/workspace/project": true });
+  });
+});
+
+describe("sidebar linked work item updates", () => {
+  it("uses the footer for the linked issue or PR instead of a second harness icon", () => {
+    props.busySessionIds = new Set();
+    props.onArchiveSession = vi.fn();
+    props.sessions = [
+      {
+        ...props.sessions[0],
+        branch: "feature/session-card",
+        repo: "acme/app",
+        linkedWorkItem: {
+          kind: "pr",
+          repo: "acme/app",
+          number: 42,
+          url: "https://github.com/acme/app/pull/42",
+        },
+      },
+    ];
+    act(() => render());
+
+    const rows = card().children;
+    const archive = card().querySelector('[aria-label^="Archive "]');
+    const pullRequest = card().querySelector('[aria-label="Open PR #42"]');
+    expect(card().querySelectorAll('img[alt=""]')).toHaveLength(1);
+    expect(rows.item(rows.length - 1)?.contains(pullRequest)).toBe(true);
+    expect(archive?.parentElement).toBe(pullRequest?.parentElement);
+    expect(archive?.nextElementSibling).toBe(pullRequest);
+  });
+
+  it("renders an unread dot without changing session order", () => {
+    props.busySessionIds = new Set();
+    props.activeSessionId = undefined;
+    props.sessions = [
+      {
+        ...props.sessions[0],
+        id: "session-2",
+        title: formatSessionTitle("codex", "Newer conversation"),
+        updatedAt: 200,
+      },
+      {
+        ...props.sessions[0],
+        id: "session-1",
+        title: formatSessionTitle("codex", "Updated PR conversation"),
+        updatedAt: 100,
+        linkedWorkItem: {
+          kind: "pr",
+          repo: "acme/app",
+          number: 42,
+          url: "https://github.com/acme/app/pull/42",
+        },
+      },
+    ];
+    props.linkedSessionUpdateIds = new Set(["session-1"]);
+    act(() => render());
+
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLElement>("[data-session-card]"),
+      ).map((row) => row.dataset.sessionCard),
+    ).toEqual(["session-2", "session-1"]);
+    expect(
+      card().querySelector('[aria-label="Linked work item updated"]'),
+    ).not.toBeNull();
   });
 });
 
