@@ -343,7 +343,9 @@ pub fn run() {
             open_new_window,
             window::hide_window,
             window::destroy_window,
-            window::confirm_quit,
+            window::quit_poll_reply,
+            window::quit_decision,
+            window::quit_ready,
             window::set_window_glass_enabled,
             window_transfer::stage_window_transfer,
             window_transfer::take_window_transfer,
@@ -381,6 +383,7 @@ pub fn run() {
             event: tauri::WindowEvent::Destroyed,
             ..
         } => {
+            window::forget_quit_window(handle, &label);
             let other_window = handle.webview_windows().keys().any(|name| name != &label);
             if !other_window {
                 reap_harness_children(handle);

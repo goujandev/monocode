@@ -25,12 +25,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
             SHOW => {
                 let _ = crate::window::show_hidden_or_open_new(app);
             }
-            QUIT => {
-                // The quit-while-busy dialog is parented to a window, so
-                // asking from a hidden one would leave it unanswerable.
-                let _ = crate::window::show_hidden_or_open_new(app);
-                crate::window::request_quit(app);
-            }
+            QUIT => crate::window::request_quit(app),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
